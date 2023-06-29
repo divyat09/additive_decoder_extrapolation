@@ -1,0 +1,4 @@
+sbatch scripts/slurm_launcher_eval_block.sh balls_supp_iid_no_occ ae_base 4
+sbatch scripts/slurm_launcher_eval_block.sh balls_supp_iid_no_occ ae_additive 4
+sbatch scripts/slurm_launcher_eval_block.sh balls_supp_scm_linear ae_base 4
+sbatch scripts/slurm_launcher_eval_block.sh balls_supp_scm_linear ae_additive 4

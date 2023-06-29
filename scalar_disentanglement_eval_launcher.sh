@@ -1,0 +1,4 @@
+sbatch scripts/slurm_launcher_eval_scalar.sh balls_supp_l_shape ae_base 10000
+sbatch scripts/slurm_launcher_eval_scalar.sh balls_supp_l_shape ae_additive 10000
+sbatch scripts/slurm_launcher_eval_scalar.sh balls_supp_extrapolate ae_base 10000
+sbatch scripts/slurm_launcher_eval_scalar.sh balls_supp_extrapolate ae_additive 10000
