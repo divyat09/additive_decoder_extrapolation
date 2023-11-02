@@ -4,8 +4,6 @@
 data/datasets/
 results/
 
-notebooks/
-
 wandb/
 
 .ipynb_checkpoints/
