@@ -17,13 +17,13 @@ import matplotlib.pyplot as plt
 from scipy import stats
 from sklearn.decomposition import FastICA
 
+#Algorithms
 from algorithms.base_auto_encoder import AE
 from algorithms.additive_auto_encoder import AE_Additive
-from algorithms.additive_shared_auto_encoder import AE_Additive_Shared
 
-from utils.metrics import *
-from utils.helper import *
-
+#DataLoaders
+from data.balls_dataset_loader import BallsDataLoader
+from data.balls_dataset_loader import sample_base_data_loaders
 
 # Input Parsing
 parser = argparse.ArgumentParser()
@@ -37,7 +37,7 @@ parser.add_argument('--total_blocks', type=int, default= 2,
                     help='')
 parser.add_argument('--latent_case', type=str, default= 'balls_supp_l_shape',
                     help='')
-parser.add_argument('--train_size', type=int, default= 50000,
+parser.add_argument('--train_size', type=int, default= 10000,
                     help='')
 parser.add_argument('--batch_size', type=int, default= 64,
                     help='')
@@ -49,6 +49,8 @@ parser.add_argument('--num_epochs', type=int, default= 1000,
                     help='')
 parser.add_argument('--seed', type=int, default=0,
                     help='')
+parser.add_argument('--input_normalization', type=str, default='none',
+                   help= '')
 parser.add_argument('--wandb_log', type=int, default=0,
                    help='')
 parser.add_argument('--cuda_device', type=int, default=0, 
@@ -66,6 +68,7 @@ lr= args.lr
 weight_decay= args.weight_decay
 num_epochs= args.num_epochs
 seed= args.seed
+input_normalization= args.input_normalization
 wandb_log= args.wandb_log
 cuda_device= args.cuda_device
 
@@ -94,7 +97,7 @@ train_dataset, val_dataset, test_dataset= sample_base_data_loaders(
                                                                   num_balls= total_blocks,
                                                                   train_size= train_size,
                                                                   batch_size= batch_size, 
-                                                                  seed= seed, 
+                                                                  input_normalization= input_normalization,
                                                                   kwargs=kwargs
                                                                  )
 
@@ -103,11 +106,9 @@ if method_type == 'ae_base':
     method= AE(args, train_dataset, val_dataset, test_dataset, seed=seed, device= device)    
 elif method_type == 'ae_additive':
     method= AE_Additive(args, train_dataset, val_dataset, test_dataset, seed=seed, device= device)    
-elif method_type == 'ae_additive_shared':
-    method= AE_Additive_Shared(args, train_dataset, val_dataset, test_dataset, seed=seed, device= device)    
 else:
     print('Error: Incorrect method type')
     sys.exit(-1)
-    
+
 # Training
 method.train()

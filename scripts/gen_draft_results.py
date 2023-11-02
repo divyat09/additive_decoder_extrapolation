@@ -103,9 +103,10 @@ def gen_line_plot(res, eval_latent_case, train_size_grid):
 def gen_violin_plot(res, eval_case_grid, labels, save_name, ylabel):
 
     fontsize=40
-    fontsize_lgd= fontsize/1.5
+    fontsize_lgd= fontsize/1.25
     marker_list = ['o', '^', 's', '*']
-
+    plt.bar_dodge = 30.0
+    
     data= {
             'recon_err': [],
             'mcc': []
@@ -126,28 +127,25 @@ def gen_violin_plot(res, eval_case_grid, labels, save_name, ylabel):
             for method in methods:
                 data[metric].append( res[method][eval_case][metric] )
 
-    fig, ax = plt.subplots(1, 2, figsize=(20, 6))
+    fig, ax = plt.subplots(1, 2, figsize=(23, 6))
     ax[0].set_yscale('log')
-    ax[0].tick_params(labelsize=fontsize)
-    ax[0].grid(True)
+    ax[0].tick_params(labelsize=fontsize, which= 'both')
+    ax[0].grid(True, which="both")
     ax[0].set_title('Reconstruction MSE (Log Scale)', fontsize=fontsize)
-    ax[0].set_ylim( pow(10, -3), 3 * pow(10, -1) )
-#     ax[0].set_xticks(np.arange(1, len(labels) + 1), labels)
-#     ax[0].set_xticklabels(labels, rotation = 45, fontsize= fontsize_lgd)
     
     plot_data= np.array(data['recon_err'])
     plot_data= np.reshape( plot_data, (plot_data.shape[0], plot_data.shape[2]) ).T
     sns.stripplot(data=plot_data, color='black', jitter=0.0, ax=ax[0], size= 20)
     sns.boxplot(data=plot_data, ax=ax[0], palette= colors, showfliers=False, linewidth=8, width=0.45, medianprops=dict(color="black", alpha=0.7))
-    ax[0].set_xticks([])
+#     ax[0].set_xticks([])
+#     ax[0].set_xticklabels(labels, rotation = 30, fontsize= fontsize_lgd, horizontalalignment= 'right')
+    ax[0].set_xticklabels(labels, rotation = 0, fontsize= fontsize_lgd)
     
 
     ax[1].tick_params(labelsize=fontsize)
     ax[1].grid(True)
     ax[1].set_title(ylabel, fontsize=fontsize)
-    ax[1].set(ylim=(45, 105))
-#     ax[1].set_xticks(np.arange(1, len(labels) + 1), labels)
-#     ax[1].set_xticklabels(labels, rotation = 45, fontsize= fontsize_lgd)
+    ax[1].set(ylim=(35, 105))
 
     plot_data= np.array(data['mcc'])
     plot_data= np.reshape( plot_data, (plot_data.shape[0], plot_data.shape[2]) ).T
@@ -155,16 +153,18 @@ def gen_violin_plot(res, eval_case_grid, labels, save_name, ylabel):
     violin= sns.boxplot(data=plot_data, ax=ax[1], palette= colors, showfliers=False, linewidth=8, width=0.45, medianprops=dict(color="black", alpha=0.7))
     for i, label in enumerate(labels):
         violin.collections[i].set_label(label)
-    ax[1].set_xticks([])
+#     ax[1].set_xticks([])
+#     ax[1].set_xticklabels(labels, rotation = 30, fontsize= fontsize_lgd, horizontalalignment= 'right')
+    ax[1].set_xticklabels(labels, rotation = 0, fontsize= fontsize_lgd)
 
     handles, labels = fig.axes[-1].get_legend_handles_labels()
-#     plt.tight_layout()
-#     plt.savefig( 'results/' + save_name  +  '.pdf', dpi=600)
+    plt.tight_layout()
+    plt.savefig( 'results/' + save_name  +  '.pdf', dpi=600)
     
-    handles = [mpatches.Patch(color=colors[idx]) for idx, label in enumerate(labels)]    
-    lgd= fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, -0.18), ncol=4, fontsize= fontsize_lgd)
+#     handles = [mpatches.Patch(color=colors[idx]) for idx, label in enumerate(labels)]    
+#     lgd= fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, -0.18), ncol=4, fontsize= fontsize_lgd)
     
-    plt.savefig( 'results/' + save_name  +  '.pdf',  bbox_extra_artists=(lgd,), bbox_inches='tight', dpi=600)
+#     plt.savefig( 'results/' + save_name  +  '.pdf',  bbox_extra_artists=(lgd,), bbox_inches='tight', dpi=600)
 
     return 
 
@@ -172,7 +172,7 @@ def gen_violin_plot(res, eval_case_grid, labels, save_name, ylabel):
 def gen_mini_violin_plot(res, eval_case_grid, labels, save_name, ylabel):
 
     fontsize=40
-    fontsize_lgd= fontsize/1.5
+    fontsize_lgd= fontsize
     marker_list = ['o', '^', 's', '*']
 
     data= {
@@ -195,26 +195,22 @@ def gen_mini_violin_plot(res, eval_case_grid, labels, save_name, ylabel):
 
     fig, ax = plt.subplots(1, 2, figsize=(20, 6))
     ax[0].set_yscale('log')
-    ax[0].tick_params(labelsize=fontsize)
-    ax[0].grid(True)
+    ax[0].tick_params(labelsize=fontsize, which= 'both')
+    ax[0].grid(True, which="both")
     ax[0].set_title('Reconstruction MSE (Log Scale)', fontsize=fontsize)
-    ax[0].set_ylim( pow(10, -3), 3 * pow(10, -1) )
-#     ax[0].set_xticks(np.arange(1, len(labels) + 1), labels)
-#     ax[0].set_xticklabels(labels, rotation = 45, fontsize= fontsize_lgd)
     
     plot_data= np.array(data['recon_err'])
     plot_data= np.reshape( plot_data, (plot_data.shape[0], plot_data.shape[2]) ).T
     sns.stripplot(data=plot_data, color='black', jitter=0.0, ax=ax[0], size= 20)
     sns.boxplot(data=plot_data, ax=ax[0], palette= colors, showfliers=False, linewidth=8, width=0.45, medianprops=dict(color="black", alpha=0.7))
-    ax[0].set_xticks([])
+#     ax[0].set_xticks([])
+    ax[0].set_xticklabels(labels, rotation = 0, fontsize= fontsize_lgd)
     
 
     ax[1].tick_params(labelsize=fontsize)
     ax[1].grid(True)
     ax[1].set_title(ylabel, fontsize=fontsize)
-    ax[1].set(ylim=(45, 105))
-#     ax[1].set_xticks(np.arange(1, len(labels) + 1), labels)
-#     ax[1].set_xticklabels(labels, rotation = 45, fontsize= fontsize_lgd)
+    ax[1].set(ylim=(20, 105))
 
     plot_data= np.array(data['mcc'])
     plot_data= np.reshape( plot_data, (plot_data.shape[0], plot_data.shape[2]) ).T
@@ -222,16 +218,17 @@ def gen_mini_violin_plot(res, eval_case_grid, labels, save_name, ylabel):
     violin= sns.boxplot(data=plot_data, ax=ax[1], palette= colors, showfliers=False, linewidth=8, width=0.45, medianprops=dict(color="black", alpha=0.7))
     for i, label in enumerate(labels):
         violin.collections[i].set_label(label)
-    ax[1].set_xticks([])
+#     ax[1].set_xticks([])
+    ax[1].set_xticklabels(labels, rotation = 0, fontsize= fontsize_lgd)
 
     handles, labels = fig.axes[-1].get_legend_handles_labels()
-#     plt.tight_layout()
-#     plt.savefig( 'results/' + save_name  +  '.pdf', dpi=600)
+    plt.tight_layout()
+    plt.savefig( 'results/' + save_name  +  '.pdf', dpi=600)
     
-    handles = [mpatches.Patch(color=colors[idx]) for idx, label in enumerate(labels)]    
-    lgd= fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, -0.18), ncol=4, fontsize= fontsize_lgd)
+#     handles = [mpatches.Patch(color=colors[idx]) for idx, label in enumerate(labels)]    
+#     lgd= fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, -0.18), ncol=4, fontsize= fontsize_lgd)
     
-    plt.savefig( 'results/' + save_name  +  '.pdf',  bbox_extra_artists=(lgd,), bbox_inches='tight', dpi=600)
+#     plt.savefig( 'results/' + save_name  +  '.pdf',  bbox_extra_artists=(lgd,), bbox_inches='tight', dpi=600)
 
     return 
 
@@ -245,8 +242,10 @@ parser.add_argument('--latent_case', type=str, default='balls_supp_l_shape',
                     help='laplace; uniform')
 parser.add_argument('--eval_latent_case', type=str, default='balls_supp_l_shape',
                     help='laplace; uniform')
-parser.add_argument('--train_size', type=int, default= 50000,
+parser.add_argument('--train_size', type=int, default= 20000,
                     help='')
+parser.add_argument('--input_normalization', type=str, default='none',
+                   help= '')
 
 args = parser.parse_args()
 results_case= args.results_case
@@ -255,11 +254,12 @@ if results_case == 'violin_plot_2d':
     
     method_grid= ['ae_base', 'ae_additive']
     eval_cases= ['In Support', 'OOD Support']
+    #For the case of diff balls dataset, change the values to train and eval in the latent_grid accordingly.
     latent_grid= [
                     {'train' : 'balls_supp_l_shape' , 'eval':  'balls_supp_l_shape', 'legend':  eval_cases[0]},
                     {'train' : 'balls_supp_l_shape', 'eval': 'balls_supp_extrapolate', 'legend': eval_cases[1] },                    
                 ]    
-    train_size= 10000
+    train_size= 20000
     
     res= {}
     
@@ -270,7 +270,7 @@ if results_case == 'violin_plot_2d':
                                                         'recon_err' : [], 
                                                         'mcc': []
                                                     } 
-            save_dir= 'results/' +  latent_case['train'] + '_eval_latent_' +  latent_case['eval'] + \
+            save_dir= 'results/' + args.input_normalization + '/'  + latent_case['train'] + '_eval_latent_' +  latent_case['eval'] + \
          '/' + method_type + '/' +  str(train_size) + '/'
             data= pickle.load( open(save_dir + 'logs.pickle', 'rb') )
 
@@ -301,12 +301,12 @@ if results_case == 'violin_plot_2d':
 
             curr_data= res[method_type][latent_case['legend']]['recon_err'] 
             mean= round( np.mean(curr_data), 2)
-            sem= round( np.std(curr_data)/np.sqrt(len(curr_data)), 3)
+            sem= round( np.std(curr_data)/np.sqrt(len(curr_data[0])), 3)            
             df['Recon Error'].append( str(mean) + ' ( ' +  str(sem) +  ' ) ' )
 
             curr_data= res[method_type][latent_case['legend']]['mcc'] 
             mean= round( np.mean(curr_data), 1)
-            sem= round( np.std(curr_data)/np.sqrt(len(curr_data)), 2)
+            sem= round( np.std(curr_data)/np.sqrt(len(curr_data[0])), 2)
             df['MCC'].append( str(mean) + ' ( ' +  str(sem) +  ' ) ' )
 
     df= pd.DataFrame.from_dict(df)
@@ -314,10 +314,10 @@ if results_case == 'violin_plot_2d':
 
     #Violin Plot
     labels= [
-                'Additive (In Support)',
-                'Non-Additive (In Support)',
-                'Additive (Out of Support)',
-                'Non-Additive (Out of Support)',
+                'Add. \n (In-Supp)',
+                'Non-Add. \n (In-Supp)',
+                'Add. \n (Out-Supp)',
+                'Non-Add. \n (Out-Supp)',
             ]
 
     gen_violin_plot(res, eval_cases, labels, 'violin_plot_2d', 'LMS-Spearman (MCC)')
@@ -341,7 +341,7 @@ elif results_case == 'violin_plot_4d':
                                                         'recon_err' : [], 
                                                         'mcc': []
                                                     } 
-            save_dir= 'results/' +  latent_case['train'] + '_eval_latent_' +  latent_case['eval'] + \
+            save_dir= 'results/' +  args.input_normalization + '/' + latent_case['train'] + '_eval_latent_' +  latent_case['eval'] + \
          '/' + method_type + '/' +  str(train_size) + '/'
             data= pickle.load( open(save_dir + 'logs.pickle', 'rb') )
 
@@ -370,12 +370,12 @@ elif results_case == 'violin_plot_4d':
 
             curr_data= res[method_type][latent_case['legend']]['recon_err'] 
             mean= round( np.mean(curr_data), 2)
-            sem= round( np.std(curr_data)/np.sqrt(len(curr_data)), 3)
+            sem= round( np.std(curr_data)/np.sqrt(len(curr_data[0])), 3)
             df['Recon Error'].append( str(mean) + ' ( ' +  str(sem) +  ' ) ' )
 
             curr_data= res[method_type][latent_case['legend']]['mcc'] 
             mean= round( np.mean(curr_data), 1)
-            sem= round( np.std(curr_data)/np.sqrt(len(curr_data)), 2)
+            sem= round( np.std(curr_data)/np.sqrt(len(curr_data[0])), 2)
             df['MCC'].append( str(mean) + ' ( ' +  str(sem) +  ' ) ' )
 
     df= pd.DataFrame.from_dict(df)
@@ -441,12 +441,14 @@ elif results_case == 'specific_plots':
     eval_latent_case= args.eval_latent_case
     train_size= args.train_size
 
-    save_dir= 'results/' +  latent_case + '_eval_latent_' +  eval_latent_case + \
+    save_dir= 'results/' + args.input_normalization + '/' + latent_case + '_eval_latent_' +  eval_latent_case + \
     '/' + method_type + '/' +  str(train_size) + '/'
     data= pickle.load( open(save_dir + 'logs.pickle', 'rb') )    
 
-    mcc_arr= data['mcc_spearman']
-#     mcc_arr= data['mcc_block']
+    if latent_case in ['balls_supp_l_shape']:
+        mcc_arr= data['mcc_spearman']
+    else:
+        mcc_arr= data['mcc_block']
     sorted_indices= np.argsort(mcc_arr)
     
     print('MCC Array: ', mcc_arr)

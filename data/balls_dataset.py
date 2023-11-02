@@ -1,5 +1,6 @@
 import os
 import sys
+import typing
 import random
 import argparse
 import torch
@@ -167,7 +168,8 @@ class BlockLatent(Balls):
         return z    
     
     def get_disconnected_support_data(self, support_case):
-        
+        """Samples latents with movement along y-axis only from two disjoint latent blocks."""
+
         x1= np.random.uniform(0.25, 0.25, size=1)[0]
         x2= np.random.uniform(0.75, 0.75, size=1)[0]
         
@@ -182,6 +184,7 @@ class BlockLatent(Balls):
         return z    
     
     def get_l_support_data(self):
+        """Samples latents with movement along y-axis only from the uniform grid excluding the upper right square; hene creating an L shaped support."""
         
         x1= np.random.uniform(0.25, 0.25, size=1)[0]
         x2= np.random.uniform(0.75, 0.75, size=1)[0]
@@ -197,6 +200,7 @@ class BlockLatent(Balls):
         return z    
     
     def get_extrapolation_data(self):
+        """Samples latents with movement along y-axis only from the upper right square that was excluded in the training support."""
         
         x1= np.random.uniform(0.25, 0.25, size=1)[0]
         x2= np.random.uniform(0.75, 0.75, size=1)[0]
@@ -217,12 +221,14 @@ class BlockLatent(Balls):
         return z
 
     def get_supp_iid(self):
+        """Samples latents from the uniform grid."""
         
         z= np.random.uniform(0.1, 0.9, size=(self.n_balls, 2))
         
         return z
     
     def get_observational_data_scm(self):
+        """Samples latents from the SCM distribution; where the position of the second ball depends on the position of the first ball."""
         
         dist= 0        
         while(dist < (2*self.ball_rad)**2):
@@ -249,12 +255,18 @@ class BlockLatent(Balls):
         
         return z
 
-    def sample_supp_grid(self, movement_axis= 'x_axis'):
+    def sample_supp_grid(self, movement_axis: str= 'x_axis') -> typing.Tuple[np.ndarray, np.ndarray]:
+        """ Sample both balls moving along a either x/y axis; we would sample 9 points along each axis. 
+        Inputs:
+            movement_axis: x_axis or y_axis
+        Returns:
+            Latent, Image Arrays; which expected shapes as (81, 4) and (81, 64, 64, 3).
+        """
         
         final_z= []
         final_x= []
         
-        for i in range(1, 10):            
+        for i in range(1, 10):
             x1= np.random.uniform(0.25, 0.25, size=1)[0]
             x2= np.random.uniform(0.75, 0.75, size=1)[0]
             
@@ -270,18 +282,11 @@ class BlockLatent(Balls):
                 x= self.draw_scene(z)
                 x= self.transform(x)
                 
-                final_z.append( torch.tensor(z.flatten()) )                
-                final_x.append( torch.tensor(x) )
-        
-        final_z= torch.stack(final_z).float()        
-        final_x= torch.stack(final_x).float()  
-        final_x= final_x.permute(0, 3, 1, 2)        
-        data_transform=  transforms.Compose([
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])  
-        
-        final_x= data_transform(final_x)        
-        print(final_z)
+                z= np.expand_dims(z.flatten(), axis= 0)
+                x= np.expand_dims(x, axis= 0)            
+
+                final_z.append(z)                
+                final_x.append(x)
         
         return final_z, final_x    
     
@@ -323,28 +328,10 @@ if not os.path.exists(base_dir):
 #Random Seed
 random.seed(seed*10)
 np.random.seed(seed*10) 
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(seed*10)
 
 data_obj= BlockLatent(latent_case= latent_case, n_balls= num_balls)
-
-if latent_case == 'latent_traversal':
-
-    base_dir= 'data/datasets/balls_latent_traversal/'
-    if not os.path.exists(base_dir):
-        os.makedirs(base_dir)
-
-    z, x= data_obj.sample_supp_grid(movement_axis= 'x_axis')
-    f= base_dir + 'supp_grid_x_axis_' + 'x' + '.pt'
-    torch.save(x, f)
-    f= base_dir + 'supp_grid_x_axis_' + 'z' + '.pt'
-    torch.save(z, f)
-
-    z, x= data_obj.sample_supp_grid(movement_axis= 'y_axis')
-    f= base_dir + 'supp_grid_y_axis_' + 'x' + '.pt'
-    torch.save(x, f)
-    f= base_dir + 'supp_grid_y_axis_' + 'z' + '.pt'
-    torch.save(z, f)
-
-    sys.exit()
 
 for data_case in ['train', 'val', 'test']: 
     print('Data Case: ', data_case)
@@ -356,30 +343,39 @@ for data_case in ['train', 'val', 'test']:
     elif data_case == 'test':
         dataset_size= args.test_size
 
-    count=0
-    final_z= []
-    final_x= []
-    for batch_idx, (z, x) in enumerate(data_obj):
+    if latent_case == 'latent_traversal_x_axis':
+        final_z, final_x= data_obj.sample_supp_grid(movement_axis= 'x_axis')
 
-        z= np.expand_dims(z, axis= 0)
-        x= np.expand_dims(x, axis= 0)            
+    elif latent_case == 'latent_traversal_y_axis':
+        final_z, final_x= data_obj.sample_supp_grid(movement_axis= 'y_axis')
 
-        final_z.append(z)
-        final_x.append(x)
+    else:
+        count=0
+        final_z= []
+        final_x= []
+        for batch_idx, (z, x) in enumerate(data_obj):
 
-        count+=1        
-        if count >= dataset_size:
-            break
+            z= np.expand_dims(z, axis= 0)
+            x= np.expand_dims(x, axis= 0)            
+
+            final_z.append(z)
+            final_x.append(x)
+
+            count+=1        
+            if count >= dataset_size:
+                break
 
     final_z= np.concatenate(final_z, axis=0)
     final_x= np.concatenate(final_x, axis=0)
 
     print(final_z.shape, final_x.shape)
-    print(final_z[:5])
+    print(final_z[:10])
     
     #Make plot
-    make_latent_support_plot(final_z, base_dir, data_case)    
+    if latent_case in ['supp_l_shape', 'supp_extrapolate', 'supp_disconnected', 'diff_balls_supp_l_shape', 'diff_balls_supp_extrapolate']:
+        make_latent_support_plot(final_z, base_dir, data_case)
     
+    #Save Data
     f= base_dir + data_case + '_' + 'x' + '.npy'
     np.save(f, final_x)
 

@@ -21,7 +21,6 @@ from algorithms.base_auto_encoder import AE
 path= os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(path)
 
-from utils.helper import ValidationHelper
 from utils.metrics import *
 
 import wandb

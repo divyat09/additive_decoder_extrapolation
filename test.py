@@ -13,10 +13,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 import torch
-import torch.utils.data as data_utils
 from torch import nn, optim
-from torch.nn import functional as F
-from torchvision import datasets, transforms
+import torch.utils.data as data_utils
+
+import torchvision
 from torchvision.utils import save_image
 from torch.autograd import Variable
 
@@ -27,11 +27,16 @@ from PIL import Image
 from scipy import stats
 from sklearn.decomposition import FastICA
 
+#Algorithms
 from algorithms.base_auto_encoder import AE
 from algorithms.additive_auto_encoder import AE_Additive
 
+#DataLoaders
+from data.balls_dataset_loader import BallsDataLoader
+from data.balls_dataset_loader import sample_base_data_loaders, sample_latent_traversal_data
+
+#Metrics
 from utils.metrics import *
-from utils.helper import *
 
 # Input Parsing
 parser = argparse.ArgumentParser()
@@ -61,6 +66,8 @@ parser.add_argument('--num_seeds', type=int, default=10,
                     help='')
 parser.add_argument('--target_seed', type=int, default=-1,
                     help='')
+parser.add_argument('--input_normalization', type=str, default='none',
+                   help= '')                    
 parser.add_argument('--wandb_log', type=int, default=0,
                    help='')
 parser.add_argument('--cuda_device', type=int, default=0, 
@@ -81,6 +88,7 @@ weight_decay= args.weight_decay
 num_seeds= args.num_seeds
 target_seed= args.target_seed
 plot_case= args.plot_case
+input_normalization= args.input_normalization
 wandb_log= args.wandb_log
 cuda_device= args.cuda_device
     
@@ -117,7 +125,7 @@ for seed in range(num_seeds):
                                                                       num_balls= total_blocks,
                                                                       train_size= train_size,
                                                                       batch_size= eval_batch_size, 
-                                                                      seed= seed, 
+                                                                      input_normalization= input_normalization,
                                                                       kwargs=kwargs
                                                                      )
     
@@ -134,26 +142,31 @@ for seed in range(num_seeds):
     method.load_model()        
     
     #Obtain Predictions and Reconstruction Loss
-    save_dir= 'results/' +  args.latent_case + '_eval_latent_' +  args.eval_latent_case + \
+    save_dir= 'results/' + input_normalization + '/' +  args.latent_case + '_eval_latent_' +  args.eval_latent_case + \
              '/' + args.method_type + '/' +  str(args.train_size) + '/'
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
         
     if method_type == 'ae_additive':
-        logs= get_predictions(method.encoder, method.decoder, train_dataset, val_dataset, test_dataset, device=method.device, save_dir= save_dir, seed= seed, plot= True)
+        logs= method.eval_identification(seed= seed, save_dir= save_dir, plot= True)
     else:
-        logs= get_predictions(method.encoder, method.decoder, train_dataset, val_dataset, test_dataset, device=method.device, save_dir= save_dir, seed= seed, plot= False)
-    
+        logs= method.eval_identification(seed= seed, save_dir= save_dir, plot= False)
 
+    #Store metrics over different random seeds    
+    for key in ['recon_rmse', 'mcc_pearson', 'mcc_spearman', 'mcc_block']:
+        if key not in res.keys():
+            res[key]= []
+        res[key].append(logs[key])
+
+    #Plot the latent support and the images for the latent cartesian-product extrapolation for the ScalarLatentsDataset
     if plot_case == 'extrapolate':
 
         fontsize= 30
         fontsize_lgd= fontsize/1.5        
 
-        pred_latent= logs['pred_z']['te']
-        true_latent= logs['true_z']['te']
+        pred_latent= logs['pred_z']
+        true_latent= logs['true_z']
 
-        # Latent Traversal 2
         width= 64
         height= 64
         padding= 10
@@ -178,16 +191,11 @@ for seed in range(num_seeds):
             latent_traverse= torch.tensor( np.array(latent_traverse) ).float()
 
             x_pred= method.decoder( latent_traverse.to(device) ).to('cpu').detach()
-            transform = transforms.Compose(
-                                [
-                                    transforms.ToPILImage(),
-                                ]
-                            )   
 
             for idx_y in range(x_pred.shape[0]):
                 data= x_pred[idx_y]
-                data= (data - data.min()) / (data.max() - data.min())
-                data= transform(data)
+                data= plot_transform(data, input_normalization= input_normalization)
+                data= torchvision.transforms.functional.to_pil_image(data)
                 final_image.paste(data, ( 2*padding+ (width+padding) * idx_x, 2*padding + (height+padding)*(grid_size - idx_y -1)))
 
         final_image.save(save_dir +  'traversed_image_seed_' + str(seed) + '.jpg')
@@ -195,12 +203,10 @@ for seed in range(num_seeds):
         color_latent= []
         for idx in range(pred_latent.shape[0]):
             color_latent.append( true_latent[idx, 0] )
-#             color_latent.append( true_latent[idx, 1] )
 
         plt.scatter(pred_latent[:, 0], pred_latent[:, 1], c=color_latent)
         plt.xlabel('Predicted Latent 1', fontsize= fontsize)
         plt.ylabel('Predicted Latent 2', fontsize= fontsize)
-#         plt.title('Predicted Latent Support', fontsize= fontsize)
 
         ood_x= []
         ood_y= []
@@ -223,6 +229,7 @@ for seed in range(num_seeds):
 
         print('Done')
 
+    #Plot the individual latent responses for the BlockLatentsDataset for sparse changes in the true latent
     elif plot_case == 'latent_traversal':
 
         x_ticks= 0.1 + 0.1 * np.array( range(9) )
@@ -234,15 +241,29 @@ for seed in range(num_seeds):
         
         movement_axis= ['x', 'y']
         for idx, axis in enumerate(movement_axis):
+            if axis == 'x':
+                latent_traversal_case= 'balls_latent_traversal_x_axis'
+            elif axis == 'y':
+                latent_traversal_case= 'balls_latent_traversal_y_axis'
 
-            x= torch.load('data/datasets/balls_latent_traversal/' + 'supp_grid_' + axis + '_axis_x.pt')
+            train_loader = sample_latent_traversal_data(
+                                                        latent_case= latent_traversal_case,
+                                                        num_balls= total_blocks,
+                                                        input_normalization= input_normalization,
+                                                        kwargs=kwargs
+                                                        )            
+
             with torch.no_grad():
-                pred_latent= method.encoder(x.to(device)).to('cpu').detach().view(9, 9, latent_dim).numpy()  
+                for batch_idx, (x, z) in enumerate(train_loader):
+                    pred_latent= method.encoder(x.to(device)).to('cpu').detach().view(9, 9, latent_dim).numpy()  
             
             curr_latent= pred_latent[:, 4, :]
             
             ax[idx, 0].grid(True) 
-            ax[idx, 0].set_ylim(-3.5, 4.5)
+            ax[idx, 0].set_ylim(-2.50, 2.50)
+            # if latent_traversal_case == 'balls_latent_traversal_y_axis':
+            #     ax[idx, 0].set_ylim(-3.50, 2.50)
+
             ax[idx, 0].tick_params(labelsize=fontsize)
             ax[idx, 0].set_ylabel('Predicted Latents', fontsize=fontsize)
             ax[idx, 0].set_xlabel('Ball 1 moving along ' + axis  + ' axis', fontsize=fontsize)
@@ -254,7 +275,7 @@ for seed in range(num_seeds):
             curr_latent= pred_latent[4, :, :]
 
             ax[idx, 1].grid(True) 
-            ax[idx, 1].set_ylim(-3.5, 4.5)
+            ax[idx, 1].set_ylim(-2.50, 2.50)
             ax[idx, 1].tick_params(labelsize=fontsize)
 #             ax[idx, 1].set_ylabel('Predicted Latents', fontsize=fontsize)
             ax[idx, 1].set_xlabel('Ball 2 moving along ' + axis  + ' axis', fontsize=fontsize)
@@ -268,50 +289,8 @@ for seed in range(num_seeds):
         plt.tight_layout()
         plt.savefig(save_dir + 'latent_traversal_seed_' + str(seed) + '.pdf', bbox_extra_artists=(lgd,), bbox_inches='tight')
         plt.clf()
-    
-    #Latent Prediction Error
-    rmse,r2= method.eval_identification()
 
-    key= 'latent_pred_rmse'
-    if key not in res.keys():
-        res[key]=[]
-    res[key].append(rmse)
-
-    key= 'latent_pred_r2'
-    if key not in res.keys():
-        res[key]=[]
-    res[key].append(r2)
-
-    #Prediction RMSE
-    key= 'recon_rmse'    
-    if key not in res.keys():
-        res[key]= []
-    res[key].append(logs['recon_loss']['te'])
-    
-    if latent_case in ['balls_supp_l_shape', 'balls_supp_extrapolate', 'balls_supp_disconnected']:
-        mcc= get_cross_correlation(copy.deepcopy(logs['pred_z']), copy.deepcopy(logs['true_z']), corr_case= 'pearson')
-        key= 'mcc_pearson'
-        if key not in res.keys():
-            res[key]= []
-        res[key].append(mcc)                    
-        
-        mcc= get_cross_correlation(copy.deepcopy(logs['pred_z']), copy.deepcopy(logs['true_z']), corr_case= 'spearman')
-        key= 'mcc_spearman'
-        if key not in res.keys():
-            res[key]= []
-        res[key].append(mcc)         
-        
-    else:
-        if method_type in ['ae_base']:
-            mcc= get_block_mcc_base_decoder(copy.deepcopy(logs['pred_z']), copy.deepcopy(logs['true_z']), total_blocks= total_blocks)            
-        else:
-            mcc= get_block_mcc(copy.deepcopy(logs['pred_z']), copy.deepcopy(logs['true_z']), total_blocks= total_blocks)
-            print(mcc)
-        key= 'mcc_block'
-        if key not in res.keys():
-            res[key]= []
-        res[key].append(mcc)
-
+#Save the metrics dataframe containing results for the different random seeds
 if target_seed == -1:
     print('Dataframe')
     print(res)
